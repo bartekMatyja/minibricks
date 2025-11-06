@@ -51,18 +51,6 @@ npm run preview
 
 Deploy the contents of the `dist/` directory to your static hosting provider. Ensure the deployed origin is allowed by your WooCommerce CORS configuration.
 
-## Using your own fallback catalogue and images
-
-The storefront shows a "fallback" catalogue whenever the WooCommerce API is offline or returns an empty list. You can fully customise both the product list and the images that appear in this mode:
-
-1. Edit [`src/data/fallbackCatalogue.ts`](src/data/fallbackCatalogue.ts) to update product names, pricing, and featured status. Each entry mirrors the `Product` type used in the UI.
-2. Place any local images you want to use inside `public/fallback-products/` (the repository already ships with sample SVG artwork for the brick-bottle sets).
-3. In the fallback catalogue file set the `image` field to either:
-   - a relative file name such as `"my-set.jpg"` (the app will resolve it to `/fallback-products/my-set.jpg`), or
-   - a full URL if you prefer to load the image from a CDN.
-
-During development Vite serves files from `public/` automatically, so you can refresh the browser to see your changes. When you build for production the images in `public/fallback-products/` are copied to the output bundle.
-
 ## Checkout flow overview
 
 - Cart state and payment UI live entirely in the React application.

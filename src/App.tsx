@@ -10,6 +10,7 @@ import { PayPalPayment } from './components/PayPalPayment';
 import { BankTransferPayment } from './components/BankTransferPayment';
 import { CashOnDeliveryPayment } from './components/CashOnDeliveryPayment';
 import { fetchWooCommerceProducts } from './lib/woocommerce';
+
 import { fallbackProducts, resolveFallbackImage } from './data/fallbackCatalogue';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
@@ -27,10 +28,20 @@ interface CartItem extends Product {
   quantity: number;
 }
 
+
 const resolvedFallbackProducts: Product[] = fallbackProducts.map((product) => ({
   ...product,
   image: resolveFallbackImage(product.image),
 }));
+
+const fallbackProducts: Product[] = [
+  { id: 1, name: 'Mini Retro Car', tagline: 'Small set, big fun.', price: 12.99, image: 'https://images.pexels.com/photos/35619/capri-ford-oldtimer-automotive.jpg?auto=compress&cs=tinysrgb&w=800', bestseller: true },
+  { id: 2, name: 'Cosmic Robot', tagline: 'Build your own galactic buddy.', price: 14.99, image: 'https://images.pexels.com/photos/2599244/pexels-photo-2599244.jpeg?auto=compress&cs=tinysrgb&w=800', bestseller: true },
+  { id: 3, name: 'Castle in the Clouds', tagline: 'For dreamers and creators.', price: 18.99, image: 'https://images.pexels.com/photos/2901209/pexels-photo-2901209.jpeg?auto=compress&cs=tinysrgb&w=800', bestseller: true },
+  { id: 4, name: 'Ocean Explorer', tagline: 'Dive into creativity.', price: 16.99, image: 'https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=800' },
+  { id: 5, name: 'Space Station', tagline: 'Build your own orbit.', price: 22.99, image: 'https://images.pexels.com/photos/73910/mars-mars-rover-space-travel-robot-73910.jpeg?auto=compress&cs=tinysrgb&w=800' },
+  { id: 6, name: 'Jungle Temple', tagline: 'Adventure awaits.', price: 19.99, image: 'https://images.pexels.com/photos/1660996/pexels-photo-1660996.jpeg?auto=compress&cs=tinysrgb&w=800' },
+];
 
 const testimonials = [
   { name: 'Sarah M.', text: 'These sets are perfect for my kids and me! Quality is amazing.', rating: 5 },
@@ -111,7 +122,10 @@ function App() {
           .filter((product): product is Product => product !== null);
 
         if (normalizedProducts.length === 0) {
+
           setProducts(resolvedFallbackProducts);
+
+          setProducts(fallbackProducts);
           setProductsError('No products were returned from WooCommerce. Showing fallback catalogue.');
         } else {
           setProducts(normalizedProducts);
@@ -124,7 +138,11 @@ function App() {
         }
         const message = error instanceof Error ? error.message : 'Failed to load products from WooCommerce.';
         setProductsError(`${message} Showing fallback catalogue.`);
+
         setProducts(resolvedFallbackProducts);
+
+        setProducts(fallbackProducts);
+
       } finally {
         if (isMounted) {
           setLoadingProducts(false);
