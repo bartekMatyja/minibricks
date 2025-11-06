@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#343a40" />
+      <stop offset="1" stop-color="#868e96" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="32" fill="url(#bg)" />
+  <rect x="140" y="60" width="120" height="220" rx="12" fill="#1a1a1a" opacity="0.9" stroke="#f59f00" stroke-width="6" />
+  <g fill="#fff" font-family="'Arial', sans-serif" text-anchor="middle">
+    <text x="200" y="120" font-size="44" font-weight="bold">Jack</text>
+    <text x="200" y="165" font-size="44" font-weight="bold">Daniel's</text>
+    <text x="200" y="205" font-size="18">Tennessee Brick</text>
+    <text x="200" y="310" font-size="16">495 pcs · Age 18+</text>
+  </g>
+</svg>

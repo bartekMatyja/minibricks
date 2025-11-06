@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff3bf" />
+      <stop offset="1" stop-color="#1098ad" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="32" fill="url(#bg)" />
+  <circle cx="130" cy="140" r="60" fill="#ff922b" opacity="0.85" />
+  <path d="M70 260 C120 210 200 210 260 260 C320 310 360 320 360 320 L40 320 Z" fill="#0b7285" opacity="0.85" />
+  <g fill="#fff" font-family="'Arial', sans-serif" text-anchor="middle">
+    <text x="200" y="120" font-size="44" font-weight="bold">Malibu</text>
+    <text x="200" y="165" font-size="18">Tropical Brick Edition</text>
+    <text x="200" y="300" font-size="16">645 pcs · Age 18+</text>
+  </g>
+</svg>

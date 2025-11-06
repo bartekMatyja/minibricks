@@ -11,6 +11,8 @@ import { BankTransferPayment } from './components/BankTransferPayment';
 import { CashOnDeliveryPayment } from './components/CashOnDeliveryPayment';
 import { fetchWooCommerceProducts } from './lib/woocommerce';
 
+import { fallbackProducts, resolveFallbackImage } from './data/fallbackCatalogue';
+
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 interface Product {
@@ -25,6 +27,12 @@ interface Product {
 interface CartItem extends Product {
   quantity: number;
 }
+
+
+const resolvedFallbackProducts: Product[] = fallbackProducts.map((product) => ({
+  ...product,
+  image: resolveFallbackImage(product.image),
+}));
 
 const fallbackProducts: Product[] = [
   { id: 1, name: 'Mini Retro Car', tagline: 'Small set, big fun.', price: 12.99, image: 'https://images.pexels.com/photos/35619/capri-ford-oldtimer-automotive.jpg?auto=compress&cs=tinysrgb&w=800', bestseller: true },
@@ -114,6 +122,9 @@ function App() {
           .filter((product): product is Product => product !== null);
 
         if (normalizedProducts.length === 0) {
+
+          setProducts(resolvedFallbackProducts);
+
           setProducts(fallbackProducts);
           setProductsError('No products were returned from WooCommerce. Showing fallback catalogue.');
         } else {
@@ -127,7 +138,11 @@ function App() {
         }
         const message = error instanceof Error ? error.message : 'Failed to load products from WooCommerce.';
         setProductsError(`${message} Showing fallback catalogue.`);
+
+        setProducts(resolvedFallbackProducts);
+
         setProducts(fallbackProducts);
+
       } finally {
         if (isMounted) {
           setLoadingProducts(false);
