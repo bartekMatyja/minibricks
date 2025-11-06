@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#a5d8ff" />
+      <stop offset="1" stop-color="#1c7ed6" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)" rx="32" />
+  <g fill="#fff" font-family="'Arial', sans-serif" text-anchor="middle">
+    <text x="200" y="140" font-size="48" font-weight="bold">ABSOLUT</text>
+    <text x="200" y="190" font-size="44" font-weight="bold">VODKA</text>
+    <text x="200" y="250" font-size="20">Limited Brick Edition</text>
+    <text x="200" y="285" font-size="16">1068 pcs · Age 18+</text>
+  </g>
+  <rect x="150" y="60" width="100" height="220" rx="28" fill="#e7f5ff" stroke="#fff" stroke-width="4" opacity="0.8" />
+  <rect x="180" y="40" width="40" height="40" rx="8" fill="#fff" opacity="0.9" />
+</svg>

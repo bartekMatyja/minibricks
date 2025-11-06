@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#dee2ff" />
+      <stop offset="1" stop-color="#748ffc" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="32" fill="url(#bg)" />
+  <path d="M140 260 L200 120 L260 260 Z" fill="#f8f9fa" opacity="0.9" />
+  <g fill="#fff" font-family="'Arial', sans-serif" text-anchor="middle">
+    <text x="200" y="120" font-size="44" font-weight="bold">GREY</text>
+    <text x="200" y="168" font-size="44" font-weight="bold">GOOSE</text>
+    <text x="200" y="210" font-size="18">Arctic Brick Series</text>
+    <text x="200" y="310" font-size="16">550 pcs · Age 18+</text>
+  </g>
+</svg>

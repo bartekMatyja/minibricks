@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="1" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#e3fafc" />
+      <stop offset="1" stop-color="#74c0fc" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="32" fill="url(#bg)" />
+  <circle cx="200" cy="160" r="90" fill="#fff" opacity="0.85" />
+  <rect x="180" y="70" width="40" height="60" rx="10" fill="#ff922b" opacity="0.9" />
+  <g fill="#1c1c1c" font-family="'Arial', sans-serif" text-anchor="middle">
+    <text x="200" y="225" font-size="44" font-weight="bold">Don Julio</text>
+    <text x="200" y="265" font-size="18">Crystal Edition</text>
+    <text x="200" y="305" font-size="16">2500 pcs · Age 18+</text>
+  </g>
+</svg>
