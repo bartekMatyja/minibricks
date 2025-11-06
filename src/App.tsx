@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ShoppingCart, Search, Menu, X, Star, ChevronLeft, ChevronRight, Package, Sparkles, Gift, Trash2 } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
@@ -9,13 +9,15 @@ import { StripePayment } from './components/StripePayment';
 import { PayPalPayment } from './components/PayPalPayment';
 import { BankTransferPayment } from './components/BankTransferPayment';
 import { CashOnDeliveryPayment } from './components/CashOnDeliveryPayment';
+import { fetchWooCommerceProducts } from './lib/woocommerce';
+import { fallbackProducts, resolveFallbackImage } from './data/fallbackCatalogue';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 interface Product {
   id: number;
   name: string;
-  tagline: string;
+  tagline?: string;
   price: number;
   image: string;
   bestseller?: boolean;
@@ -25,14 +27,10 @@ interface CartItem extends Product {
   quantity: number;
 }
 
-const products: Product[] = [
-  { id: 1, name: 'Mini Retro Car', tagline: 'Small set, big fun.', price: 12.99, image: 'https://images.pexels.com/photos/35619/capri-ford-oldtimer-automotive.jpg?auto=compress&cs=tinysrgb&w=800', bestseller: true },
-  { id: 2, name: 'Cosmic Robot', tagline: 'Build your own galactic buddy.', price: 14.99, image: 'https://images.pexels.com/photos/2599244/pexels-photo-2599244.jpeg?auto=compress&cs=tinysrgb&w=800', bestseller: true },
-  { id: 3, name: 'Castle in the Clouds', tagline: 'For dreamers and creators.', price: 18.99, image: 'https://images.pexels.com/photos/2901209/pexels-photo-2901209.jpeg?auto=compress&cs=tinysrgb&w=800', bestseller: true },
-  { id: 4, name: 'Ocean Explorer', tagline: 'Dive into creativity.', price: 16.99, image: 'https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=800' },
-  { id: 5, name: 'Space Station', tagline: 'Build your own orbit.', price: 22.99, image: 'https://images.pexels.com/photos/73910/mars-mars-rover-space-travel-robot-73910.jpeg?auto=compress&cs=tinysrgb&w=800' },
-  { id: 6, name: 'Jungle Temple', tagline: 'Adventure awaits.', price: 19.99, image: 'https://images.pexels.com/photos/1660996/pexels-photo-1660996.jpeg?auto=compress&cs=tinysrgb&w=800' },
-];
+const resolvedFallbackProducts: Product[] = fallbackProducts.map((product) => ({
+  ...product,
+  image: resolveFallbackImage(product.image),
+}));
 
 const testimonials = [
   { name: 'Sarah M.', text: 'These sets are perfect for my kids and me! Quality is amazing.', rating: 5 },
@@ -42,6 +40,9 @@ const testimonials = [
 
 function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -73,16 +74,93 @@ function App() {
   const [numberPop, setNumberPop] = useState(false);
   const [cartPosition, setCartPosition] = useState<{x: number, y: number} | null>(null);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProducts = async () => {
+      try {
+        const wooProducts = await fetchWooCommerceProducts();
+
+        if (!isMounted) {
+          return;
+        }
+
+        const normalizedProducts = wooProducts
+          .map((product) => {
+            const priceString = product.price || product.regular_price || product.sale_price || '0';
+            const parsedPrice = Number.parseFloat(priceString);
+            if (!Number.isFinite(parsedPrice)) {
+              return null;
+            }
+
+            const rawTagline = product.short_description || product.description || '';
+            const cleanedTagline = rawTagline
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+
+            return {
+              id: product.id,
+              name: product.name,
+              tagline: cleanedTagline || undefined,
+              price: parsedPrice,
+              image: product.images?.[0]?.src || 'https://images.pexels.com/photos/1871318/pexels-photo-1871318.jpeg?auto=compress&cs=tinysrgb&w=800',
+              bestseller: Boolean(product.featured),
+            } satisfies Product;
+          })
+          .filter((product): product is Product => product !== null);
+
+        if (normalizedProducts.length === 0) {
+          setProducts(resolvedFallbackProducts);
+          setProductsError('No products were returned from WooCommerce. Showing fallback catalogue.');
+        } else {
+          setProducts(normalizedProducts);
+          setProductsError(null);
+        }
+      } catch (error) {
+        console.error('Failed to load WooCommerce products:', error);
+        if (!isMounted) {
+          return;
+        }
+        const message = error instanceof Error ? error.message : 'Failed to load products from WooCommerce.';
+        setProductsError(`${message} Showing fallback catalogue.`);
+        setProducts(resolvedFallbackProducts);
+      } finally {
+        if (isMounted) {
+          setLoadingProducts(false);
+        }
+      }
+    };
+
+    loadProducts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const bestsellers = products.filter(p => p.bestseller);
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const filteredProducts = searchQuery
-    ? products.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.tagline.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? products.filter(p => {
+        const query = searchQuery.toLowerCase();
+        return (
+          p.name.toLowerCase().includes(query) ||
+          (p.tagline?.toLowerCase() ?? '').includes(query)
+        );
+      })
     : products;
+
+  useEffect(() => {
+    setCurrentSlide(prev => {
+      if (bestsellers.length === 0) {
+        return 0;
+      }
+      return Math.min(prev, bestsellers.length - 1);
+    });
+  }, [bestsellers.length]);
 
   const handleAddToCart = (product: Product, event: React.MouseEvent<HTMLButtonElement>) => {
     const button = event.currentTarget;
@@ -147,10 +225,12 @@ function App() {
   };
 
   const nextSlide = () => {
+    if (bestsellers.length === 0) return;
     setCurrentSlide((prev) => (prev + 1) % bestsellers.length);
   };
 
   const prevSlide = () => {
+    if (bestsellers.length === 0) return;
     setCurrentSlide((prev) => (prev - 1 + bestsellers.length) % bestsellers.length);
   };
 
@@ -216,7 +296,7 @@ function App() {
         items: cartItems.map(item => ({
           productId: item.id,
           productName: item.name,
-          productTagline: item.tagline,
+          productTagline: item.tagline ?? '',
           price: item.price,
           quantity: item.quantity
         }))
@@ -292,14 +372,14 @@ function App() {
           shippingZip: checkoutForm.zip,
           totalAmount: cartTotal,
           paymentMethod: selectedPaymentMethod,
-          items: cartItems.map(item => ({
-            productId: item.id,
-            productName: item.name,
-            productTagline: item.tagline,
-            price: item.price,
-            quantity: item.quantity
-          }))
-        };
+        items: cartItems.map(item => ({
+          productId: item.id,
+          productName: item.name,
+          productTagline: item.tagline ?? '',
+          price: item.price,
+          quantity: item.quantity
+        }))
+      };
 
         const result = await createOrder(orderData);
 
@@ -442,7 +522,7 @@ function App() {
         >
           <div className="relative">
             <img
-              src={products.find(p => p.id === animatingProduct)?.image}
+              src={products.find(p => p.id === animatingProduct)?.image || 'https://images.pexels.com/photos/1871318/pexels-photo-1871318.jpeg?auto=compress&cs=tinysrgb&w=800'}
               alt="Flying product"
               className="w-24 h-24 rounded-xl shadow-2xl"
               style={{
@@ -1046,65 +1126,42 @@ function App() {
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Collection</h2>
             <p className="text-lg text-gray-600">Handpicked sets for every creator</p>
           </div>
-          {searchQuery && (
-            <div className="text-center mb-8">
-              <p className="text-gray-600">
-                {filteredProducts.length} result{filteredProducts.length !== 1 ? 's' : ''} for "{searchQuery}"
-              </p>
+          {productsError && (
+            <div className="max-w-2xl mx-auto mb-8 bg-yellow-50 border border-yellow-200 text-yellow-700 px-6 py-4 rounded-xl">
+              {productsError}
             </div>
           )}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProducts.map((product) => (
-              <div key={product.id} className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all hover:-translate-y-2 group">
-                <div className="aspect-square overflow-hidden bg-gray-100">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
+          {loadingProducts ? (
+            <div className="text-center text-gray-600">Loading products from WooCommerce...</div>
+          ) : filteredProducts.length === 0 ? (
+            <p className="text-center text-gray-600">No products found. Please adjust your filters or try again later.</p>
+          ) : (
+            <>
+              {searchQuery && (
+                <div className="text-center mb-8">
+                  <p className="text-gray-600">
+                    {filteredProducts.length} result{filteredProducts.length !== 1 ? 's' : ''} for "{searchQuery}"
+                  </p>
                 </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{product.name}</h3>
-                  <p className="text-gray-600 mb-4">{product.tagline}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold text-gray-900">${product.price}</span>
-                    <button
-                      onClick={(e) => handleAddToCart(product, e)}
-                      className="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition-colors"
-                    >
-                      Add to Cart
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Best Sellers Carousel */}
-      <section className="py-20 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-center mb-12">Best Sellers</h2>
-          <div className="relative">
-            <div className="overflow-hidden rounded-2xl">
-              <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
-                {bestsellers.map((product) => (
-                  <div key={product.id} className="min-w-full px-4">
-                    <div className="grid md:grid-cols-2 gap-8 items-center bg-white/10 backdrop-blur-sm rounded-2xl p-8">
-                      <div className="aspect-square rounded-xl overflow-hidden">
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                      </div>
-                      <div>
-                        <h3 className="text-3xl font-bold mb-4">{product.name}</h3>
-                        <p className="text-xl text-gray-300 mb-6">{product.tagline}</p>
-                        <div className="flex items-center space-x-4 mb-8">
-                          <span className="text-4xl font-bold">${product.price}</span>
-                          <span className="bg-yellow-400 text-gray-900 px-3 py-1 rounded-full text-sm font-bold">Bestseller</span>
-                        </div>
+              )}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredProducts.map((product) => (
+                  <div key={product.id} className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all hover:-translate-y-2 group">
+                    <div className="aspect-square overflow-hidden bg-gray-100">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">{product.name}</h3>
+                      <p className="text-gray-600 mb-4">{product.tagline || 'Discover more with BrickMini.'}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl font-bold text-gray-900">${product.price}</span>
                         <button
                           onClick={(e) => handleAddToCart(product, e)}
-                          className="bg-white text-gray-900 px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-100 transition-colors"
+                          className="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition-colors"
                         >
                           Add to Cart
                         </button>
@@ -1113,20 +1170,60 @@ function App() {
                   </div>
                 ))}
               </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* Best Sellers Carousel */}
+      <section className="py-20 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-4xl font-bold text-center mb-12">Best Sellers</h2>
+          {bestsellers.length === 0 ? (
+            <p className="text-center text-gray-300">Best seller products will appear here once they are marked as featured in WooCommerce.</p>
+          ) : (
+            <div className="relative">
+              <div className="overflow-hidden rounded-2xl">
+                <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
+                  {bestsellers.map((product) => (
+                    <div key={product.id} className="min-w-full px-4">
+                      <div className="grid md:grid-cols-2 gap-8 items-center bg-white/10 backdrop-blur-sm rounded-2xl p-8">
+                        <div className="aspect-square rounded-xl overflow-hidden">
+                          <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-bold mb-4">{product.name}</h3>
+                          <p className="text-xl text-gray-300 mb-6">{product.tagline || 'Discover more with BrickMini.'}</p>
+                          <div className="flex items-center space-x-4 mb-8">
+                            <span className="text-4xl font-bold">${product.price}</span>
+                            <span className="bg-yellow-400 text-gray-900 px-3 py-1 rounded-full text-sm font-bold">Bestseller</span>
+                          </div>
+                          <button
+                            onClick={(e) => handleAddToCart(product, e)}
+                            className="bg-white text-gray-900 px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-100 transition-colors"
+                          >
+                            Add to Cart
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={prevSlide}
+                className="absolute left-0 top-1/2 -translate-y-1/2 bg-white text-gray-900 p-3 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-0 top-1/2 -translate-y-1/2 bg-white text-gray-900 p-3 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
             </div>
-            <button
-              onClick={prevSlide}
-              className="absolute left-0 top-1/2 -translate-y-1/2 bg-white text-gray-900 p-3 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button
-              onClick={nextSlide}
-              className="absolute right-0 top-1/2 -translate-y-1/2 bg-white text-gray-900 p-3 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </div>
+          )}
         </div>
       </section>
 
